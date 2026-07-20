@@ -10,6 +10,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,24 +27,24 @@ public class MultiplyCleanCommand {
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
             Commands.literal("multiplyclean")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> src.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(ctx -> {
                     int killed = 0;
 
                     for (ServerLevel level : ctx.getSource().getServer().getAllLevels()) {
-                        // Collect all non-player living entities
+                        WorldBorder border = level.getWorldBorder();
+                        AABB searchBox = new AABB(
+                            border.getMinX(), level.getMinBuildHeight(),  border.getMinZ(),
+                            border.getMaxX(), level.getMaxBuildHeight(), border.getMaxZ()
+                        );
+
                         List<Entity> toKill = new ArrayList<>();
 
-                        for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, 
-                                level.getWorldBorder().createAabb(), 
-                                e -> !(e instanceof Player))) {
-                            toKill.add(e);
-                        }
+                        toKill.addAll(level.getEntitiesOfClass(LivingEntity.class, searchBox,
+                            e -> !(e instanceof Player)));
 
-                        // Collect all dropped item entities
-                        toKill.addAll(level.getEntitiesOfClass(ItemEntity.class,
-                                level.getWorldBorder().createAabb(),
-                                e -> true));
+                        toKill.addAll(level.getEntitiesOfClass(ItemEntity.class, searchBox,
+                            e -> true));
 
                         for (Entity e : toKill) {
                             e.discard();
@@ -50,11 +52,12 @@ public class MultiplyCleanCommand {
                         }
                     }
 
+                    final int total = killed;
                     ctx.getSource().sendSuccess(
-                        () -> Component.literal("[Multiply] Cleaned " + killed + " entities."),
+                        () -> Component.literal("[Multiply] Cleaned " + total + " entities."),
                         true
                     );
-                    return killed;
+                    return total;
                 })
         );
     }
