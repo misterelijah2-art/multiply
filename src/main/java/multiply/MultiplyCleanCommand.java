@@ -1,9 +1,11 @@
 package multiply;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -27,7 +29,7 @@ public class MultiplyCleanCommand {
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
             Commands.literal("multiplyclean")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> ((SharedSuggestionProvider) src).hasPermission(2))
                 .executes(ctx -> {
                     int killed = 0;
 
