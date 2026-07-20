@@ -23,7 +23,13 @@ public class MultiplyEvents {
     private static final int RADIUS = 5;
     private static final Random RANDOM = new Random();
 
+    // Minimum ticks standing on ground before a jump is considered valid
+    private static final int MIN_GROUND_TICKS = 3;
+    // Vanilla jump Y velocity is ~0.42; knockback is typically much lower (~0.1-0.25)
+    private static final double JUMP_Y_THRESHOLD = 0.38;
+
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
+    private static final Map<UUID, Integer> groundTicks = new HashMap<>();
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -34,11 +40,21 @@ public class MultiplyEvents {
                     boolean onGround = player.onGround();
                     boolean wasGround = wasOnGround.getOrDefault(uuid, true);
 
-                    boolean justLeftGround = wasGround && !onGround;
-                    boolean movingUpward = player.getDeltaMovement().y > 0.1;
+                    if (onGround) {
+                        groundTicks.merge(uuid, 1, Integer::sum);
+                    } else {
+                        // Just left the ground
+                        if (wasGround) {
+                            double yVel = player.getDeltaMovement().y;
+                            int ticksOnGround = groundTicks.getOrDefault(uuid, 0);
 
-                    if (justLeftGround && movingUpward) {
-                        triggerMultiply(level, player);
+                            // Only trigger if: upward velocity matches a real jump
+                            // AND player was standing still enough (not knocked mid-air)
+                            if (yVel >= JUMP_Y_THRESHOLD && ticksOnGround >= MIN_GROUND_TICKS) {
+                                triggerMultiply(level, player);
+                            }
+                        }
+                        groundTicks.put(uuid, 0);
                     }
 
                     wasOnGround.put(uuid, onGround);
@@ -54,7 +70,7 @@ public class MultiplyEvents {
             center.getX() + RADIUS, center.getY() + RADIUS, center.getZ() + RADIUS
         );
 
-        // Duplicate nearby living entities - exclude ALL players, not just the jumping one
+        // Duplicate nearby living entities (excluding all players)
         List<LivingEntity> nearbyEntities = level.getEntitiesOfClass(
             LivingEntity.class,
             searchBox,
@@ -85,12 +101,10 @@ public class MultiplyEvents {
                 item.getX(), item.getY(), item.getZ(),
                 item.getItem().copy()
             );
-
             double dx = (RANDOM.nextDouble() - 0.5) * 0.3;
             double dy = 0.15 + RANDOM.nextDouble() * 0.15;
             double dz = (RANDOM.nextDouble() - 0.5) * 0.3;
             copy.setDeltaMovement(new Vec3(dx, dy, dz));
-
             level.addFreshEntity(copy);
         }
     }
