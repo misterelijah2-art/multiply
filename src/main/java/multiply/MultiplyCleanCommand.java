@@ -27,13 +27,12 @@ public class MultiplyCleanCommand {
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
             Commands.literal("multiplyclean")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> src.isPlayer() ? src.getPlayer().hasPermissions(2) : true)
                 .executes(ctx -> {
                     int killed = 0;
 
                     for (ServerLevel level : ctx.getSource().getServer().getAllLevels()) {
                         WorldBorder border = level.getWorldBorder();
-                        // Use fixed Y range covering all possible build heights (-64 to 320)
                         AABB searchBox = new AABB(
                             border.getMinX(), -64, border.getMinZ(),
                             border.getMaxX(),  320, border.getMaxZ()
