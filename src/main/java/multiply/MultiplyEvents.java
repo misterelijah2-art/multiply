@@ -9,15 +9,18 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 public class MultiplyEvents {
 
     private static final int RADIUS = 5;
+    private static final Random RANDOM = new Random();
 
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
 
@@ -30,7 +33,6 @@ public class MultiplyEvents {
                     boolean onGround = player.onGround();
                     boolean wasGround = wasOnGround.getOrDefault(uuid, true);
 
-                    // Jump = just left the ground AND moving upward
                     boolean justLeftGround = wasGround && !onGround;
                     boolean movingUpward = player.getDeltaMovement().y > 0.1;
 
@@ -51,7 +53,7 @@ public class MultiplyEvents {
             center.getX() + RADIUS, center.getY() + RADIUS, center.getZ() + RADIUS
         );
 
-        // Duplicate nearby living entities (mobs, animals - not the player)
+        // Duplicate nearby living entities
         List<LivingEntity> nearbyEntities = level.getEntitiesOfClass(
             LivingEntity.class,
             searchBox,
@@ -69,7 +71,7 @@ public class MultiplyEvents {
             }
         }
 
-        // Duplicate nearby dropped item entities
+        // Duplicate nearby dropped item entities with a small random launch
         List<ItemEntity> nearbyItems = level.getEntitiesOfClass(
             ItemEntity.class,
             searchBox,
@@ -82,7 +84,13 @@ public class MultiplyEvents {
                 item.getX(), item.getY(), item.getZ(),
                 item.getItem().copy()
             );
-            copy.setDeltaMovement(item.getDeltaMovement());
+
+            // Small random burst: slight horizontal scatter + tiny upward pop
+            double dx = (RANDOM.nextDouble() - 0.5) * 0.3;
+            double dy = 0.15 + RANDOM.nextDouble() * 0.15;
+            double dz = (RANDOM.nextDouble() - 0.5) * 0.3;
+            copy.setDeltaMovement(new Vec3(dx, dy, dz));
+
             level.addFreshEntity(copy);
         }
     }
