@@ -27,7 +27,7 @@ public class MultiplyCleanCommand {
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
             Commands.literal("multiplyclean")
-                .requires(src -> src.isPlayer() ? src.getPlayer().hasPermissions(2) : true)
+                .requires(src -> src.hasPermission(2))
                 .executes(ctx -> {
                     int killed = 0;
 
