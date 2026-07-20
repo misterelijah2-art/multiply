@@ -27,15 +27,16 @@ public class MultiplyCleanCommand {
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
             Commands.literal("multiplyclean")
-                .requires(src -> src.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .requires(src -> src.hasPermission(2))
                 .executes(ctx -> {
                     int killed = 0;
 
                     for (ServerLevel level : ctx.getSource().getServer().getAllLevels()) {
                         WorldBorder border = level.getWorldBorder();
+                        // Use fixed Y range covering all possible build heights (-64 to 320)
                         AABB searchBox = new AABB(
-                            border.getMinX(), level.getMinBuildHeight(),  border.getMinZ(),
-                            border.getMaxX(), level.getMaxBuildHeight(), border.getMaxZ()
+                            border.getMinX(), -64, border.getMinZ(),
+                            border.getMaxX(),  320, border.getMaxZ()
                         );
 
                         List<Entity> toKill = new ArrayList<>();
