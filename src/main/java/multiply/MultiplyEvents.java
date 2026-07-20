@@ -23,10 +23,9 @@ public class MultiplyEvents {
     private static final int RADIUS = 5;
     private static final Random RANDOM = new Random();
 
-    // Minimum ticks standing on ground before a jump is considered valid
+    // Minimum ticks standing on ground before leaving counts as a real jump
+    // (filters mid-air knockback launches - those never rack up ground ticks first)
     private static final int MIN_GROUND_TICKS = 3;
-    // Vanilla jump Y velocity is ~0.42; knockback is typically much lower (~0.1-0.25)
-    private static final double JUMP_Y_THRESHOLD = 0.38;
 
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
     private static final Map<UUID, Integer> groundTicks = new HashMap<>();
@@ -43,14 +42,11 @@ public class MultiplyEvents {
                     if (onGround) {
                         groundTicks.merge(uuid, 1, Integer::sum);
                     } else {
-                        // Just left the ground
+                        // Transition: was on ground, now airborne
                         if (wasGround) {
-                            double yVel = player.getDeltaMovement().y;
                             int ticksOnGround = groundTicks.getOrDefault(uuid, 0);
-
-                            // Only trigger if: upward velocity matches a real jump
-                            // AND player was standing still enough (not knocked mid-air)
-                            if (yVel >= JUMP_Y_THRESHOLD && ticksOnGround >= MIN_GROUND_TICKS) {
+                            // Only fire if the player was properly standing (not knocked off mid-air)
+                            if (ticksOnGround >= MIN_GROUND_TICKS) {
                                 triggerMultiply(level, player);
                             }
                         }
