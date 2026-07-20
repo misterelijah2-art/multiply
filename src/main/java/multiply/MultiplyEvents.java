@@ -8,6 +8,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -53,11 +54,11 @@ public class MultiplyEvents {
             center.getX() + RADIUS, center.getY() + RADIUS, center.getZ() + RADIUS
         );
 
-        // Duplicate nearby living entities
+        // Duplicate nearby living entities - exclude ALL players, not just the jumping one
         List<LivingEntity> nearbyEntities = level.getEntitiesOfClass(
             LivingEntity.class,
             searchBox,
-            e -> e != player
+            e -> !(e instanceof Player)
         );
 
         for (LivingEntity entity : nearbyEntities) {
@@ -85,7 +86,6 @@ public class MultiplyEvents {
                 item.getItem().copy()
             );
 
-            // Small random burst: slight horizontal scatter + tiny upward pop
             double dx = (RANDOM.nextDouble() - 0.5) * 0.3;
             double dy = 0.15 + RANDOM.nextDouble() * 0.15;
             double dz = (RANDOM.nextDouble() - 0.5) * 0.3;
