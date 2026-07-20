@@ -18,13 +18,8 @@ import java.util.UUID;
 public class MultiplyEvents {
 
     private static final int RADIUS = 5;
-    // Cooldown in ticks (40 = 2 seconds)
-    private static final int COOLDOWN_TICKS = 40;
 
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
-    private static final Map<UUID, Integer> cooldowns = new HashMap<>();
-    // Tracks how many ticks the player has been airborne (to distinguish jump vs fall)
-    private static final Map<UUID, Integer> airTicks = new HashMap<>();
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -32,26 +27,15 @@ public class MultiplyEvents {
                 for (ServerPlayer player : level.players()) {
                     UUID uuid = player.getUUID();
 
-                    cooldowns.put(uuid, Math.max(0, cooldowns.getOrDefault(uuid, 0) - 1));
-
                     boolean onGround = player.onGround();
                     boolean wasGround = wasOnGround.getOrDefault(uuid, true);
 
-                    if (onGround) {
-                        // Reset air counter when on ground
-                        airTicks.put(uuid, 0);
-                    } else {
-                        airTicks.put(uuid, airTicks.getOrDefault(uuid, 0) + 1);
-                    }
-
-                    // Jump = just left the ground AND vertical velocity is upward (positive Y delta)
-                    // This prevents a fall-landing from triggering (fall = was in air a long time, then lands)
+                    // Jump = just left the ground AND moving upward
                     boolean justLeftGround = wasGround && !onGround;
                     boolean movingUpward = player.getDeltaMovement().y > 0.1;
 
-                    if (justLeftGround && movingUpward && cooldowns.getOrDefault(uuid, 0) == 0) {
+                    if (justLeftGround && movingUpward) {
                         triggerMultiply(level, player);
-                        cooldowns.put(uuid, COOLDOWN_TICKS);
                     }
 
                     wasOnGround.put(uuid, onGround);
@@ -67,7 +51,7 @@ public class MultiplyEvents {
             center.getX() + RADIUS, center.getY() + RADIUS, center.getZ() + RADIUS
         );
 
-        // Duplicate nearby living entities (mobs, animals — not the player)
+        // Duplicate nearby living entities (mobs, animals - not the player)
         List<LivingEntity> nearbyEntities = level.getEntitiesOfClass(
             LivingEntity.class,
             searchBox,
