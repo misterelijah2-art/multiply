@@ -23,12 +23,19 @@ public class MultiplyEvents {
     private static final int RADIUS = 5;
     private static final Random RANDOM = new Random();
 
-    // Minimum ticks standing on ground before leaving counts as a real jump
-    // (filters mid-air knockback launches - those never rack up ground ticks first)
+    // Player must have been on solid ground for this many ticks before going airborne
     private static final int MIN_GROUND_TICKS = 3;
+
+    // Max XZ speed that still counts as a voluntary jump.
+    // Normal walk ~0.20, sprint ~0.28, sprint-jump ~0.30.
+    // Knockback launches are typically 0.40+ horizontally.
+    // Set threshold just above sprint-jump to block knockback but allow all voluntary jumps.
+    private static final double MAX_JUMP_XZ_SPEED = 0.36;
 
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
     private static final Map<UUID, Integer> groundTicks = new HashMap<>();
+    // Store XZ speed at the tick the player was last on the ground, to read at liftoff
+    private static final Map<UUID, Double> xzSpeedOnGround = new HashMap<>();
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -38,18 +45,28 @@ public class MultiplyEvents {
 
                     boolean onGround = player.onGround();
                     boolean wasGround = wasOnGround.getOrDefault(uuid, true);
+                    Vec3 vel = player.getDeltaMovement();
+                    double xzSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
 
                     if (onGround) {
                         groundTicks.merge(uuid, 1, Integer::sum);
+                        // Keep updating XZ speed while grounded so we have the
+                        // most recent pre-liftoff value when the player jumps
+                        xzSpeedOnGround.put(uuid, xzSpeed);
                     } else {
-                        // Transition: was on ground, now airborne
+                        // Transition: grounded last tick, airborne this tick
                         if (wasGround) {
                             int ticksOnGround = groundTicks.getOrDefault(uuid, 0);
-                            // Only fire if the player was properly standing (not knocked off mid-air)
-                            if (ticksOnGround >= MIN_GROUND_TICKS) {
+                            double launchXZ = xzSpeedOnGround.getOrDefault(uuid, 0.0);
+
+                            // Real jump: stood on ground long enough AND
+                            // horizontal launch speed is within voluntary-jump range
+                            // (sprint-jump peaks ~0.30, knockback typically 0.40+)
+                            if (ticksOnGround >= MIN_GROUND_TICKS && launchXZ <= MAX_JUMP_XZ_SPEED) {
                                 triggerMultiply(level, player);
                             }
                         }
+                        // Reset ground ticks immediately — zero cooldown
                         groundTicks.put(uuid, 0);
                     }
 
