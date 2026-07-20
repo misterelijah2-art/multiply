@@ -23,18 +23,18 @@ public class MultiplyEvents {
     private static final int RADIUS = 5;
     private static final Random RANDOM = new Random();
 
-    // Player must have been on solid ground for this many ticks before going airborne
-    private static final int MIN_GROUND_TICKS = 3;
+    // 1 tick on ground is enough — the XZ speed gate handles knockback filtering.
+    // Sprint-jumps only touch the ground for 1-2 ticks between hops, so 3 was
+    // silently blocking every jump after the first.
+    private static final int MIN_GROUND_TICKS = 1;
 
     // Max XZ speed that still counts as a voluntary jump.
-    // Normal walk ~0.20, sprint ~0.28, sprint-jump ~0.30.
+    // Walk ~0.20, sprint ~0.28, sprint-jump ~0.30.
     // Knockback launches are typically 0.40+ horizontally.
-    // Set threshold just above sprint-jump to block knockback but allow all voluntary jumps.
     private static final double MAX_JUMP_XZ_SPEED = 0.36;
 
     private static final Map<UUID, Boolean> wasOnGround = new HashMap<>();
     private static final Map<UUID, Integer> groundTicks = new HashMap<>();
-    // Store XZ speed at the tick the player was last on the ground, to read at liftoff
     private static final Map<UUID, Double> xzSpeedOnGround = new HashMap<>();
 
     public static void register() {
@@ -50,23 +50,16 @@ public class MultiplyEvents {
 
                     if (onGround) {
                         groundTicks.merge(uuid, 1, Integer::sum);
-                        // Keep updating XZ speed while grounded so we have the
-                        // most recent pre-liftoff value when the player jumps
                         xzSpeedOnGround.put(uuid, xzSpeed);
                     } else {
-                        // Transition: grounded last tick, airborne this tick
                         if (wasGround) {
                             int ticksOnGround = groundTicks.getOrDefault(uuid, 0);
                             double launchXZ = xzSpeedOnGround.getOrDefault(uuid, 0.0);
 
-                            // Real jump: stood on ground long enough AND
-                            // horizontal launch speed is within voluntary-jump range
-                            // (sprint-jump peaks ~0.30, knockback typically 0.40+)
                             if (ticksOnGround >= MIN_GROUND_TICKS && launchXZ <= MAX_JUMP_XZ_SPEED) {
                                 triggerMultiply(level, player);
                             }
                         }
-                        // Reset ground ticks immediately — zero cooldown
                         groundTicks.put(uuid, 0);
                     }
 
@@ -83,7 +76,6 @@ public class MultiplyEvents {
             center.getX() + RADIUS, center.getY() + RADIUS, center.getZ() + RADIUS
         );
 
-        // Duplicate nearby living entities (excluding all players)
         List<LivingEntity> nearbyEntities = level.getEntitiesOfClass(
             LivingEntity.class,
             searchBox,
@@ -101,7 +93,6 @@ public class MultiplyEvents {
             }
         }
 
-        // Duplicate nearby dropped item entities with a small random launch
         List<ItemEntity> nearbyItems = level.getEntitiesOfClass(
             ItemEntity.class,
             searchBox,
