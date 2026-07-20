@@ -4,9 +4,9 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -30,13 +30,11 @@ public class MultiplyEvents {
                 for (ServerPlayer player : level.players()) {
                     UUID uuid = player.getUUID();
 
-                    // Tick down cooldown
                     cooldowns.put(uuid, Math.max(0, cooldowns.getOrDefault(uuid, 0) - 1));
 
                     boolean onGround = player.onGround();
                     boolean wasGround = wasOnGround.getOrDefault(uuid, true);
 
-                    // Jump detected: was on ground last tick, now airborne
                     if (wasGround && !onGround && cooldowns.getOrDefault(uuid, 0) == 0) {
                         triggerMultiply(level, player);
                         cooldowns.put(uuid, COOLDOWN_TICKS);
@@ -64,17 +62,18 @@ public class MultiplyEvents {
 
         for (LivingEntity entity : nearbyEntities) {
             EntityType<?> type = entity.getType();
-            LivingEntity copy = (LivingEntity) type.create(level, MobSpawnType.MOB_SUMMONED);
+            LivingEntity copy = (LivingEntity) type.create(level, EntitySpawnReason.MOB_SUMMONED);
             if (copy != null) {
-                copy.moveTo(
-                    entity.getX(), entity.getY(), entity.getZ(),
-                    entity.getYRot(), entity.getXRot()
+                copy.teleportTo(
+                    entity.getX(), entity.getY(), entity.getZ()
                 );
+                copy.setYRot(entity.getYRot());
+                copy.setXRot(entity.getXRot());
                 level.addFreshEntity(copy);
             }
         }
 
-        // Duplicate floor blocks (place a copy one layer above each floor block)
+        // Duplicate floor blocks one layer above
         for (int x = -RADIUS; x <= RADIUS; x++) {
             for (int z = -RADIUS; z <= RADIUS; z++) {
                 BlockPos floorPos = new BlockPos(center.getX() + x, center.getY() - 1, center.getZ() + z);
