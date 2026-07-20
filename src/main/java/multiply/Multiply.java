@@ -11,6 +11,7 @@ public class Multiply implements ModInitializer {
     @Override
     public void onInitialize() {
         MultiplyEvents.register();
+        MultiplyCleanCommand.register();
         LOGGER.info("Multiply initialized.");
     }
 }
